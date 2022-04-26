@@ -1,0 +1,27 @@
+前置：
+安装python-opencv库
+
+初始化（程序的最开始）
+import time  # 后面用于加时间戳
+import cv2  # opencv在python中的库
+cap = cv2.VideoCapture(1)  # 注意此处具体是0摄像头还是1摄像头是外接的摄像头需要单独确认一下，因电脑而异
+
+需要拍摄时：
+
+'''
+我的想法是额外存一个变量储存上一次测量出来有人还是没有人
+将本次与上次的测量结果，如果一致则不用管，如果不一致则拍一张照片保存一下
+如果是从没人变成有人，就存个有人；如果从没人变成了有人，就存个没人
+方便我们后边验证
+因为现在从没人到有人相对较灵敏，所以不太用担心场地内有人但是没检测出来
+而且因为晚上大部分时间都没人，所以理论上不会保存太多照片
+要是某张照片里没人但雷达说有人，那说明碰见鬼了23333333
+'''
+ret, frame = cap.read()  # ret为本次读取是否成功，frame为拍摄得到的RGB矩阵
+if ret == 1:
+    ll = time.localtime(time.time())  
+    timestamp = ll.tm_hour * 10000 + ll.tm_min * 100 + ll.tm_sec  # 时间戳
+
+    file_name = '.\\record\\' + str(timestamp) + '_无人.jpg'   # 需要提前建好record文件夹
+    # file_name = '.\\record\\' + str(timestamp) + '_有人.jpg'  # 需要提前建好record文件夹
+    cv2.imwrite(file_name, frame)
