@@ -75,7 +75,7 @@ class uwb_radar:
         # Start streaming
         self.xep.x4driver_set_fps(kwargs['set_fps'])
         fps = self.xep.x4driver_get_fps()
-
+        print("fps:", fps)
         print("wait radar")
         self.read_condition = threading.Condition()
 
@@ -107,11 +107,11 @@ class uwb_radar:
             if True:
             # with self.read_condition:
                 # print(self.leiji.shape[0])
-                if self.leiji is not None and self.leiji.shape[0] > 240:
+                if self.leiji is not None and self.leiji.shape[0] > 12*40:
                     if ycl == 1:
                         print('init')
-                    self.leiji = self.leiji[-220:, :]
-                    rawdata = self.leiji[-220:, :-1].copy()
+                    self.leiji = self.leiji[-(11*40):, :]
+                    rawdata = self.leiji[-(11*40):, :-1].copy()
                     self.pure_data = pca_filter.p_f(rawdata, M, L)
                     ycl += 1
                     self.can_read = True
@@ -172,20 +172,10 @@ class uwb_radar:
                 self.leiji_data_storage = save2.copy()
             else:
                 self.leiji_data_storage = np.vstack((self.leiji_data_storage,save2))
-            if self.leiji_data_storage.shape[0] >= 20 * 60 * 1:
-                sio.savemat('D:/AllAboutPostGraduateWork/项目/301医院/二阶段/MCI_monitor/data_storage/20220426testing{num}.mat'.format(num=num), {'data': self.leiji_data_storage})
+            if self.leiji_data_storage.shape[0] >= 40 * 60 * 1:
+                sio.savemat('D:/AllAboutPostGraduateWork/项目/301医院/二阶段/MCI_monitor/data_storage/20220505hall2wyl{num}.mat'.format(num=num), {'data': self.leiji_data_storage})
                 self.leiji_data_storage = None
                 num += 1
-
-    def data_storage_pure(self):
-        pure_num = 1
-        while not self.end:
-            save3 = self.pure_data
-            self.pure_data_storage = save3.copy()
-            if self.pure_data_storage.shape[0] >= 20 * 60 * 1:
-                sio.savemat("D:/AllAboutPostGraduateWork/项目/301医院/二阶段/MCI_monitor/pure_data_storage/20220423testing.mat", {'data{num}'.format(num=pure_num): self.pure_data_storage})
-                self.pure_data_storage = None
-                pure_num += 1
 
     def max_energy(self, puredata):
         data = puredata
@@ -208,8 +198,8 @@ class uwb_radar:
         #     return 0, 0
         beginindex = round((range_low - self.range[0])*156 - 50)
         endindex = round((range_high - self.range[0])*156 - 50)
-        beginindex = 0 if beginindex<0 else beginindex
-        endindex = 0 if endindex<0 else endindex
+        beginindex = 0 if beginindex < 0 else beginindex
+        endindex = 0 if endindex < 0 else endindex
 
         if self.can_read and self.pure_data is not None:
             beginindex = self.pure_data.shape[1] if beginindex>self.pure_data.shape[1] else beginindex
@@ -275,23 +265,23 @@ if __name__ == '__main__':
     # os.system('start GuideInfra.exe')
 
     args = {
-        'set_enable':1,
-        'set_iterations':64,
-        'set_pulses_per_step':5,
-        'set_dac_step':1,
-        'set_dac_min':949,
-        'set_dac_max':1100,
-        'set_tx_power':2,
-        'set_downconversion':0,
-        'set_frame_area_offset':0.18,
-        'set_frame_area':[0.2, 4],
-        'set_tx_center_frequency':3,
-        'set_prf_div':16,
-        'set_fps':20}
-    uwb = uwb_radar('COM8', args)
+        'set_enable': 1,
+        'set_iterations': 64,
+        'set_pulses_per_step': 38,
+        'set_dac_step': 1,
+        'set_dac_min': 949,
+        'set_dac_max': 1100,
+        'set_tx_power': 2,
+        'set_downconversion': 0,
+        'set_frame_area_offset': 0.18,
+        'set_frame_area': [0.2, 5],
+        'set_tx_center_frequency': 3,
+        'set_prf_div': 16,
+        'set_fps': 40}
+    uwb = uwb_radar('COM3', args)
     # print('Start reading')
     i = 0
-    while i < 600:
+    while i < 40 * 30:
         # if uwb.PureData.shape[0] > 1 and uwb.can_read:
         #     if result[tag]['state'] and (result[tag]['endindex'] != result[tag]['beginindex']) :
         #         PureData3 = uwb.PureData[:, result[tag]['beginindex']:result[tag]['endindex']].copy()
