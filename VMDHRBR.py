@@ -201,14 +201,14 @@ def VMDHRBR(HRsignal):
                 fre[i, :] = np.abs(np.fft.fftshift(spectrum)) * 10000
                 result = np.argmax(fre[i,:])
                 provalue[0,i] = int(np.abs(Y[result]) * 60)  # 存储所有分解出的频率值保存为次/分钟单位
-                print(provalue[0,i])
+                # print(provalue[0,i])
 
             if flagheart==0 and flagbreath==0:
                 for i in range(K):
-                    if 50 <= provalue[0,i] <= 120:  # 如果有中心频率在心率的范围内
+                    if 50 <= provalue[0,i] <= 110:  # 如果有中心频率在心率的范围内
                         measuredHeartbeat = provalue[0,i]  # 心率
                         flagheart = 1  # 分解出了心率
-                    if 5 <= provalue[0,i] <= 30:  # 如果有中心频率在呼吸频率的范围内
+                    if 10 <= provalue[0,i] <= 27:  # 如果有中心频率在呼吸频率的范围内
                         measuredbreath = provalue[0,i]  # 呼吸频率
                         flagbreath = 1  # 分解出了呼吸频率
             
@@ -222,8 +222,8 @@ def VMDHRBR(HRsignal):
             break
 
     if (flagheart == 0):
-        measuredHeartbeat = -1  # 如果没有分解出心率，则心率值置-1
+        measuredHeartbeat = 80  # 如果没有分解出心率，则心率值置80
     if (flagbreath == 0):
-        measuredbreath = -1  # 如果没有分解出呼吸频率，则呼吸频率值置-1
+        measuredbreath = 18  # 如果没有分解出呼吸频率，则呼吸频率值置18
 
     return measuredHeartbeat, measuredbreath
