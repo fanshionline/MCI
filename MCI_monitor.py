@@ -8,12 +8,12 @@ import argparse
 import cv2
 import tools
 from PIL import Image, ImageDraw, ImageFont
-from uwb_radar import uwb_radar
+from uwb_radar_phaseonly import uwb_radar_phaseonly
 from human_detection import human_detector
 from socket import *
 import time
 import select
-
+from VMDHRBR import k_value
 '''
 用于传递YOLO v5需要的参数，部分参数已设置默认值
 '''
@@ -168,10 +168,10 @@ def cv2ImgAddText(img, left, top, hr, br, t, d, textColor=(255, 0, 0), textSize=
     if resultoxi['1']['oximeter'] == 0:
         resultoxi['1']['oximeter'] = 80
     accuracy_hr = 1 - abs((int(resultoxi['1']['oximeter']) - int(hr))) / int(resultoxi['1']['oximeter'])
-    with open("20220505hallwyl2.txt", 'a') as f:
+    with open("20220515indoorwylphase2.txt", 'a') as f:
         f.write(str(hr))
         f.write(' ' + str(resultoxi['1']['oximeter']))
-        f.write(' ' + str(round(100 * accuracy_hr, 1)) + '%' + ' b:' + str(br) + ' t:' + str(t) + '\n')
+        f.write(' ' + str(round(100*accuracy_hr,1)) +'%' +' b:' + str(br) +' t:' + str(t) +' k:' + str(k_value) + '\n')
         f.close()
     # **********************************************************************************************
     # draw.text((left, top+100), str(d), textColor, font=fontStyle)
@@ -264,13 +264,13 @@ if __name__ == "__main__":
         'set_tx_power':2,
         'set_downconversion':0,
         'set_frame_area_offset':0.18,
-        'set_frame_area':[0.2, 5],
+        'set_frame_area':[0.2, 1.5],
         'set_tx_center_frequency':3,
         'set_prf_div':16,
         'set_fps':40}
     while 1:
         if hd.work:
-            uwb = uwb_radar('COM3', args)
+            uwb = uwb_radar_phaseonly('COM3', args)
             break
         sleep(1)
 
