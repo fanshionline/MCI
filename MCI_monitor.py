@@ -8,12 +8,12 @@ import argparse
 import cv2
 import tools
 from PIL import Image, ImageDraw, ImageFont
-from uwb_radar_phaseonly import uwb_radar_phaseonly
+from uwb_radar_with_phase import uwb_radar_with_phase
 from human_detection import human_detector
 from socket import *
 import time
 import select
-from VMDHRBR import k_value
+
 '''
 用于传递YOLO v5需要的参数，部分参数已设置默认值
 '''
@@ -50,7 +50,7 @@ def parse_opt():
     return opt
 
 def draw():
-    global hd, uwb, thermal_frame, thermal_image, end
+    global hd, uwb, thermal_frame, thermal_image, end, smaller_k, phase_flag
     # global hd
     while 1:
         # sleep(0.01)
@@ -73,20 +73,31 @@ def draw():
             # print(iou.shape)
             if isman_camera and uwb.can_read:
                 amplitude, index, energy_ratio = tools.sp(uwb.pure_data[-1, :], num)
-                # print(index)
-
                 hr = []
                 br = []
                 temp = []
+
                 for i in range(num):
                     d = (index[i] + 50) / 156 + 0.2
-                    h, b = uwb.vital_signs(d - 0.1, d + 0.1)
-                    if h == -1:
-                        h = 0
-                    if b == -1:
-                        b = 0
-                    hr.append(h)
-                    br.append(b)
+                    h1, b1, k_val1, h2, b2, k_val2 = uwb.vital_signs(d - 0.1, d + 0.1)
+                    if k_val1 or k_val2:
+                        if k_val1 <= k_val2:
+                            smaller_k = k_val1
+                            hr.append(int(round(h1)))
+                            br.append(int(round(b1)))
+                            if len(hr) > 6:
+                                hr.pop(0)
+                            if len(br) > 6:
+                                br.pop(0)
+                        else:
+                            smaller_k = k_val2
+                            phase_flag = 1
+                            hr.append(int(round(h2)))
+                            br.append(int(round(b2)))
+                            if len(hr) > 6:
+                                hr.pop(0)
+                            if len(br) > 6:
+                                br.pop(0)
 
                     biggest = np.argmax(iou[:, 3])
                     iou_sorted[i] = iou[biggest]
@@ -108,14 +119,9 @@ def draw():
                     # cv2.putText(frame, str(h), (int(x * cam_width), int(y * cam_height)), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
                     # cv2.putText(frame, str(b), (int(x * cam_width), int(y * cam_height)), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
                     # cv2.putText(frame, str(t), (int(x * cam_width), int(y * cam_height)), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
-                    frame = cv2ImgAddText(frame, int((x - wi / 2) * cam_width), int((y - he / 2) * cam_height), h, b, t, d)
+                    frame = cv2ImgAddText(frame, int((x - wi / 2) * cam_width), int((y - he / 2) * cam_height), hr, br, t, d)
                     
-                    # cv2.rectangle(frame, )
 
-                # print('hr')
-                # print(hr)
-                # print('br')
-                # print(br)
                     
             frame_resized = cv2.resize(frame, (1280, 720))
             # print(frame_resized.shape)
@@ -153,32 +159,24 @@ def cv2ImgAddText(img, left, top, hr, br, t, d, textColor=(255, 0, 0), textSize=
     fontStyle = ImageFont.truetype(
         "simhei"
         ".ttf", textSize, encoding="utf-8")
-    # 绘制文本
-    # if result[target]['state'] and result[target]['heartbeat']>0:
-        # draw.text((left, top+10), '目标：'+target, textColor, font=fontStyle)
-        # draw.text((left, top+30), '距离：'+str(d), font=fontStyle)
-
-    # draw.text((left, top+10), '心率'+str(hr), textColor, font=fontStyle)
-    # draw.text((left, top+40), '呼吸率'+str(br), textColor, font=fontStyle)
-    # draw.text((left, top+70), '温度'+str(t)+'℃', textColor, font=fontStyle)
-    draw.text((left + 10, top+10), str(hr), textColor, font=fontStyle)
-    draw.text((left + 10, top+40), str(br), textColor, font=fontStyle)
+    draw.text((left + 10, top+10), str(round(sum(hr)/len(hr))), textColor, font=fontStyle)
+    draw.text((left + 10, top+40), str(round(sum(br)/len(br))), textColor, font=fontStyle)
     draw.text((left + 10, top+70), str(t)+'℃', textColor, font=fontStyle)
     #  **********************************************************************************************
     if resultoxi['1']['oximeter'] == 0:
         resultoxi['1']['oximeter'] = 80
-    accuracy_hr = 1 - abs((int(resultoxi['1']['oximeter']) - int(hr))) / int(resultoxi['1']['oximeter'])
-    with open("20220515indoorwylphase2.txt", 'a') as f:
-        f.write(str(hr))
+    accuracy_hr = 1 - abs((int(resultoxi['1']['oximeter']) - int(hr[-1]))) / int(resultoxi['1']['oximeter'])
+    with open("20220524indoor-wyl-with_range.txt", 'a') as f:
+        f.write(str(round(sum(hr)/len(hr))))
         f.write(' ' + str(resultoxi['1']['oximeter']))
-        f.write(' ' + str(round(100*accuracy_hr,1)) +'%' +' b:' + str(br) +' t:' + str(t) +' k:' + str(k_value) + '\n')
+        f.write(' ' + str(round(100*accuracy_hr, 1)) + '%' + ' b:' + str(round(sum(br)/len(br))) +
+                ' t:' + str(t) + ' k:' + str(smaller_k) + ' phaseornot:' + str(phase_flag) + '\n')
         f.close()
     # **********************************************************************************************
     # draw.text((left, top+100), str(d), textColor, font=fontStyle)
     # draw.text((left, top+50), '血氧仪：'+str(result[target]['oximeter']), textColor, font=fontStyle)
 
-    # 转换回OpenCV格式
-    # img.show()
+
     return cv2.cvtColor(np.asarray(img), cv2.COLOR_RGB2BGR)
 
 '''
@@ -264,16 +262,17 @@ if __name__ == "__main__":
         'set_tx_power':2,
         'set_downconversion':0,
         'set_frame_area_offset':0.18,
-        'set_frame_area':[0.2, 1.5],
+        'set_frame_area':[0.2, 1.9],
         'set_tx_center_frequency':3,
         'set_prf_div':16,
         'set_fps':40}
     while 1:
         if hd.work:
-            uwb = uwb_radar_phaseonly('COM3', args)
+            uwb = uwb_radar_with_phase('COM3', args)
             break
         sleep(1)
-
+    smaller_k = 20
+    phase_flag = 0
     t = threading.Thread(name="thermal", target=thermal)
     t.start()
     t2 = threading.Thread(name="oximeter", target=oximeter, args=(port_oximeter,))  # 线程2：脉搏血氧仪的连接与数据传输
