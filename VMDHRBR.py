@@ -19,7 +19,6 @@ Output:
     omega: 计算出各模态的中心频率
 '''
 
-k_value = None
 
 def VMD(signal, alpha, tau, K, DC, init, tol):
     import math
@@ -88,7 +87,8 @@ def VMD(signal, alpha, tau, K, DC, init, tol):
         # 通过残差维纳滤波更新第一个模态的频谱
         u_hat_plus[n,:,k-1]=(f_hat_plus-sum_uk-lamda_hat[n-1,:]/2)/(1+Alpha[k-1]*np.square(freqs-omega_plus[n-1,k-1]))
         if DC==False:
-            omega_plus[n,k-1]=np.dot(freqs[T//2:T],np.square(np.abs(u_hat_plus[n,T//2:T,k-1])).T)/np.sum(np.square(np.abs(u_hat_plus[n,T//2:T,k-1])))
+            if np.sum(np.square(np.abs(u_hat_plus[n,T//2:T:,k-1]))):
+                omega_plus[n,k-1]=np.dot(freqs[T//2:T],np.square(np.abs(u_hat_plus[n,T//2:T,k-1])).T)/np.sum(np.square(np.abs(u_hat_plus[n,T//2:T,k-1])))
 
 
         for k in range(2,K+1):
@@ -99,7 +99,8 @@ def VMD(signal, alpha, tau, K, DC, init, tol):
             u_hat_plus[n,:,k-1]=(f_hat_plus-sum_uk-lamda_hat[n-1,:]/2)/(1+Alpha[k-1]*np.square(freqs-omega_plus[n-1,k-1]))
             
             # 中心频率
-            omega_plus[n,k-1]=np.dot(freqs[T//2:T],np.square(np.abs(u_hat_plus[n,T//2:T,k-1])).T)/np.sum(np.square(np.abs(u_hat_plus[n,T//2:T:,k-1])))
+            if np.sum(np.square(np.abs(u_hat_plus[n,T//2:T:,k-1]))):
+                omega_plus[n,k-1]=np.dot(freqs[T//2:T],np.square(np.abs(u_hat_plus[n,T//2:T,k-1])).T)/np.sum(np.square(np.abs(u_hat_plus[n,T//2:T:,k-1])))
         # 更新双重变量
         lamda_hat[n,:]=lamda_hat[n-1,:]+tau*(np.sum(u_hat_plus[n,:,:],axis=1)-f_hat_plus)
 
@@ -176,7 +177,6 @@ Output:
     measuredbreath: 计算出的心率（次/分钟）
 '''
 def VMDHRBR(HRsignal):
-    global k_value
     # 低带3Hz
     hr_filter = [0.0309909673242566, -0.165661939691912, 0.0108793969808390, 0.0324236783132672,
                  0.0199968912456759, -0.000613578794395767, -0.0174981843140624, -0.0209931469194497,
@@ -190,8 +190,7 @@ def VMDHRBR(HRsignal):
                  0.0108700045894203, -0.00877704765628144, -0.0209931469194497, -0.0174981843140624,
                  -0.000613578794395767, 0.0199968912456759, 0.0324236783132672, 0.0108793969808390, -0.165661939691912,
                  0.0309909673242566]
-    valueofk = [4,7,10,12,15,20]  # VMD算法提取模态数量K，若分解不出心率与呼吸速率对应频率段信号则增大K继续计算
-    # valueofk = [7]
+    valueofk = [4, 7, 10, 12, 15]  # VMD算法提取模态数量K，若分解不出心率与呼吸速率对应频率段信号则增大K继续计算
     # 在Python中，“**”表示指数，“//”表示输出结果为除法向下取整
     Y = range(-2 ** 16 // 2, 2 ** 16 // 2 - 1)  # 16位整型数的范围 [-32768, 32767]
     Y = np.array(Y) * 20 / 2 ** 16  # [-10, 10 - 20 / 2** 16]
@@ -200,6 +199,7 @@ def VMDHRBR(HRsignal):
     DData = np.convolve(HRsignal, hr_filter)[25:len(HRsignal)+25]
     measuredHeartbeat = -1  # 计算出的心率
     measuredbreath = -1  # 计算出的呼吸速率
+    final_k = 20  # 如果分解出心率呼吸了，记录K值，否则k值记为20，其中，20不在k值池内。
 
     for j in range(len(valueofk)):  # 经过几次VMD分解由valueofk中的K值个数来定，若分解不出心率与呼吸速率对应频率段信号则增大K继续计算
 
@@ -209,8 +209,7 @@ def VMDHRBR(HRsignal):
 
             fre = np.zeros((K, 2**16))  # 计算频率的矩阵
             provalue = np.zeros((1, K))  # 存储分解出的K个模态的中心频率值
-            print('k:', K)
-            k_value = K
+
             for i in range(K):
                 spectrum = np.fft.fft(u[i, :], 2 ** 16)
                 fre[i, :] = np.abs(np.fft.fftshift(spectrum)) * 10000
@@ -227,7 +226,8 @@ def VMDHRBR(HRsignal):
                         measuredbreath = provalue[0,i]  # 呼吸频率
                         flagbreath = 1  # 分解出了呼吸频率
             
-                if flagheart and flagbreath:
+                if flagheart or flagbreath:
+                    final_k = K
                     pass
                 else:
                     flagheart = 0
@@ -241,4 +241,4 @@ def VMDHRBR(HRsignal):
     if (flagbreath == 0):
         measuredbreath = 18  # 如果没有分解出呼吸频率，则呼吸频率值置18
 
-    return measuredHeartbeat, measuredbreath
+    return measuredHeartbeat, measuredbreath, final_k
