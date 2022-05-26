@@ -1,6 +1,31 @@
 #-*-coding:utf-8 -*-
 from numpy import *
 
+'''
+对雷达相位信号进行预处理，仅去除背景杂波，不过带通, 不去直流。
+'''
+def p_f_phase(raw_phase_data):
+    c = raw_phase_data.shape
+    row = c[0]  # 一共多少行
+    col = c[1]  # 一共多少列
+    # DC_removed = zeros((row, col-2))
+    raw_phase_data = raw_phase_data[:, 35:col - 2]
+    # 直接把前35列的直达波和最后两列去掉在去杂波
+    ClutterData = raw_phase_data
+    pure_phase_data = raw_phase_data
+    alpha = 0.8
+    for i in range(row):
+        # selected = raw_phase_data[i,:-3]
+        # for j in range(col - 2):
+        #     DC_removed[i, j] = raw_phase_data[i, j] - mean(selected)
+        # # 到这里已经逐行地去除了该行的均值
+        if i == 0:
+            ClutterData[i, :] = (1 - alpha) * raw_phase_data[i, :]
+            pure_phase_data[i, :] = raw_phase_data[i, :] - ClutterData[i, :]
+        else:
+            ClutterData[i, :] = alpha * ClutterData[i - 1, :] + (1 - alpha) * raw_phase_data[i, :]
+            pure_phase_data[i, :] = raw_phase_data[i, :] - ClutterData[i, :]
+    return raw_phase_data
 
 '''
 对雷达数据进行预处理带通滤波，只保留有用的频段的数据以及去除背景噪声
