@@ -166,7 +166,7 @@ def cv2ImgAddText(img, left, top, hr, br, t, d, textColor=(255, 0, 0), textSize=
     if resultoxi['1']['oximeter'] == 0:
         resultoxi['1']['oximeter'] = 80
     accuracy_hr = 1 - abs((int(resultoxi['1']['oximeter']) - int(hr[-1]))) / int(resultoxi['1']['oximeter'])
-    with open("20220524indoor-wyl-with_range.txt", 'a') as f:
+    with open("20220531indoor-wyl-with_range.txt", 'a') as f:
         f.write(str(round(sum(hr)/len(hr))))
         f.write(' ' + str(resultoxi['1']['oximeter']))
         f.write(' ' + str(round(100*accuracy_hr, 1)) + '%' + ' b:' + str(round(sum(br)/len(br))) +
